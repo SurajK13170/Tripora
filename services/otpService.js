@@ -1,4 +1,7 @@
 
+const { OTP_EXPIRY, OTP_LENGTH, OTP_RESEND_COOLDOWN } = require('../utils/constants');
+
+const otpStore = new Map();
 
 setInterval(() => {
   const now = Date.now();
@@ -10,7 +13,7 @@ setInterval(() => {
 }, 60000); // Check every minute
 
 const generateOTP = () => {
-  const length = parseInt(process.env.OTP_LENGTH) || 6;
+  const length = OTP_LENGTH;
   let otp = '';
   for (let i = 0; i < length; i++) {
     otp += Math.floor(Math.random() * 10);
@@ -21,14 +24,16 @@ const generateOTP = () => {
 const generateAndStoreOTP = async (email, pendingUser = null) => {
   try {
     const otp = generateOTP();
-    const expirySeconds = parseInt(process.env.OTP_EXPIRY) || 300; // 5 minutes in seconds
+    const expirySeconds = OTP_EXPIRY;
     const expiresAt = Date.now() + (expirySeconds * 1000);
+    const existingData = otpStore.get(`otp:${email}`);
     
     // Store OTP in memory
     otpStore.set(`otp:${email}`, {
       otp,
-      user: pendingUser,
-      expiresAt
+      user: pendingUser ?? existingData?.user ?? null,
+      expiresAt,
+      lastSentAt: Date.now(),
     });
     
     console.log(`✅ OTP generated for ${email}: ${otp}`);
@@ -76,22 +81,33 @@ const resendOTP = async (email) => {
   try {
     const key = `otp:${email}`;
     const storedData = otpStore.get(key);
-    
-    // Check if OTP already exists and hasn't expired
-    if (storedData && storedData.expiresAt > Date.now()) {
+
+    if (!storedData) {
+      return {
+        success: false,
+        message: 'OTP expired or not found',
+      };
+    }
+
+    const now = Date.now();
+    const resendCooldownMs = OTP_RESEND_COOLDOWN * 1000;
+    const nextAllowedAt = (storedData.lastSentAt || 0) + resendCooldownMs;
+
+    if (nextAllowedAt > now) {
       return {
         success: false,
         message: 'Please wait before requesting a new OTP',
+        retryAfterSeconds: Math.ceil((nextAllowedAt - now) / 1000),
       };
     }
-    
-    const pendingUser = storedData ? storedData.user : null;
+
+    const pendingUser = storedData.user || null;
     const otp = await generateAndStoreOTP(email, pendingUser);
     
     return {
       success: true,
       message: 'OTP resent successfully',
-      otp, // Return OTP for testing (remove in production)
+      otp,
     };
   } catch (error) {
     console.error('❌ Resend OTP error:', error.message);
@@ -126,5 +142,6 @@ module.exports = {
   verifyOTP,
   resendOTP,
   clearOTP,
-  getPendingUser,
+  getPendingUser
+  
 };

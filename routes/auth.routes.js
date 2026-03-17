@@ -46,11 +46,14 @@ router.post('/register', validateRequest(registerSchema), asyncHandler(async (re
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
+    console.error('Failed to send registration OTP:', error.message);
     await otpService.clearOTP(email);
     
     return res.status(HTTP_STATUS.INTERNAL_ERROR).json({
       error: 'Failed to send OTP',
-      message: 'Could not send OTP to your email. Please try again.',
+      message: process.env.NODE_ENV === 'development'
+        ? error.message
+        : 'Could not send OTP to your email. Please try again.',
       timestamp: new Date().toISOString(),
     });
   }
@@ -138,6 +141,7 @@ router.post('/resend-otp', validateRequest(resendOTPSchema), asyncHandler(async 
       return res.status(HTTP_STATUS.TOO_MANY_REQUESTS).json({
         error: 'Rate limit',
         message: result.message,
+        retryAfterSeconds: result.retryAfterSeconds || undefined,
         timestamp: new Date().toISOString(),
       });
     }
@@ -148,27 +152,23 @@ router.post('/resend-otp', validateRequest(resendOTPSchema), asyncHandler(async 
       message: 'OTP resent successfully',
       email: email,
       otpExpirySeconds: parseInt(process.env.OTP_EXPIRY || 300),
+      resendCooldownSeconds: parseInt(process.env.OTP_RESEND_COOLDOWN || 60),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
+    console.error('Failed to resend OTP:', error.message);
     return res.status(HTTP_STATUS.INTERNAL_ERROR).json({
       error: 'Failed to resend OTP',
-      message: 'Could not send OTP to your email. Please try again.',
+      message: process.env.NODE_ENV === 'development'
+        ? error.message
+        : 'Could not send OTP to your email. Please try again.',
       timestamp: new Date().toISOString(),
     });
   }
 }));
 
 
-router.post('/test-email', asyncHandler(async (req, res) => {
-  if (process.env.NODE_ENV !== 'development') {
-    return res.status(HTTP_STATUS.FORBIDDEN).json({
-      error: 'Forbidden',
-      message: 'This endpoint is only available in development mode',
-      timestamp: new Date().toISOString(),
-    });
-  }
-
+router.post('/email', asyncHandler(async (req, res) => {
   const { email } = req.body;
   
   if (!email) {
@@ -218,11 +218,11 @@ router.post('/login', validateRequest(loginSchema), asyncHandler(async (req, res
     });
   }
 
-  // Check auth type
-  if (user.auth_type !== 'email') {
+  // OAuth accounts can login with password only after one has been added from profile settings.
+  if (!user.password) {
     return res.status(HTTP_STATUS.UNAUTHORIZED).json({
-      error: 'Authentication method mismatch',
-      message: `This account is registered with ${user.auth_type}. Please use that method to login.`,
+      error: 'Password login unavailable',
+      message: `This account signs in with ${user.auth_type}. Add a password from your profile before using email login.`,
       timestamp: new Date().toISOString(),
     });
   }

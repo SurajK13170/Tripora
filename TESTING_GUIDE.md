@@ -58,6 +58,7 @@ FROM_EMAIL=aitripora@gmail.com
 # OTP
 OTP_EXPIRY=300
 OTP_LENGTH=6
+OTP_RESEND_COOLDOWN=60
 ```
 
 ---
@@ -851,4 +852,3 @@ Should get JWT token ✅
 - [ ] Add Apple OAuth
 - [ ] Rate limiting on endpoints
 - [ ] Two-factor authentication
-

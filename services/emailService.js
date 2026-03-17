@@ -9,6 +9,18 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+const getFromAddress = () => {
+  const smtpUser = process.env.SMTP_USER;
+  const fromEmail = process.env.FROM_EMAIL;
+
+  // Gmail commonly rejects or rewrites arbitrary sender addresses.
+  if (!fromEmail || fromEmail === smtpUser) {
+    return smtpUser;
+  }
+
+  console.warn(`FROM_EMAIL (${fromEmail}) does not match SMTP_USER (${smtpUser}); using SMTP_USER as sender.`);
+  return smtpUser;
+};
 
 const sendOTPEmail = async (email, otp) => {
   try {
@@ -16,7 +28,7 @@ const sendOTPEmail = async (email, otp) => {
     console.log(`🔐 OTP Code: ${otp} (valid for 5 minutes)`);
     
     const mailOptions = {
-      from: process.env.FROM_EMAIL || process.env.SMTP_USER,
+      from: getFromAddress(),
       to: email,
       subject: '🔐 Your Tripora OTP Code',
       html: `
@@ -66,7 +78,7 @@ const sendWelcomeEmail = async (email, name) => {
     console.log(`📧 Sending welcome email to: ${email}`);
     
     const mailOptions = {
-      from: process.env.FROM_EMAIL || process.env.SMTP_USER,
+      from: getFromAddress(),
       to: email,
       subject: '🎉 Welcome to Tripora!',
       html: `
@@ -147,7 +159,7 @@ const sendTestEmail = async (toEmail) => {
     console.log(`📧 Sending test email to: ${toEmail}`);
     
     const mailOptions = {
-      from: process.env.FROM_EMAIL || process.env.SMTP_USER,
+      from: getFromAddress(),
       to: toEmail,
       subject: '🔧 Tripora Email Service Test',
       text: 'If you received this, email service is working correctly!',

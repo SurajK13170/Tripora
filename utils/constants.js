@@ -7,6 +7,7 @@ const HTTP_STATUS = {
   FORBIDDEN: 403,
   NOT_FOUND: 404,
   CONFLICT: 409,
+  TOO_MANY_REQUESTS: 429,
   INTERNAL_ERROR: 500,
 };
 
@@ -25,6 +26,7 @@ const USER_STATUS = {
 
 const OTP_LENGTH = parseInt(process.env.OTP_LENGTH || 6);
 const OTP_EXPIRY = parseInt(process.env.OTP_EXPIRY || 300); // 5 minutes in seconds
+const OTP_RESEND_COOLDOWN = parseInt(process.env.OTP_RESEND_COOLDOWN || 60); // 1 minute in seconds
 
 const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -40,6 +42,7 @@ module.exports = {
   USER_STATUS,
   OTP_LENGTH,
   OTP_EXPIRY,
+  OTP_RESEND_COOLDOWN,
   PASSWORD_REGEX,
   EMAIL_REGEX,
   RATE_LIMIT_WINDOW,
