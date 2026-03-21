@@ -8,6 +8,7 @@ const emailService = require('./services/emailService');
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');
+const placesRoutes = require('./routes/places.routes');
 const userRoutes = require('./routes/user.routes');
 
 // Import middleware
@@ -40,6 +41,7 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/places', placesRoutes);
 app.use('/api/users', userRoutes);
 
 // 404 Handler
